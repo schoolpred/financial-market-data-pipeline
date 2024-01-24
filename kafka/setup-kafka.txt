@@ -9,3 +9,22 @@ cd kafka_2.12-3.3.1
 ----------------------------------------
 Start Zoo-keeper
 bin/zookeeper-server-start.sh config/zookeeper.properties
+
+
+---------------------
+Start Kafka-server:
+cd kafka_2.12-3.3.1
+bin/kafka-server-start.sh config/server.properties
+
+---------------
+Create the topic:
+bin/kafka-topics.sh --create --topic finance --bootstrap-server 13.229.73.169:9092 --replication-factor 1 --partitions 1
+
+
+-----------------------
+Start Producer
+bin/kafka-console-producer.sh --topic finance --bootstrap-server 13.229.73.169:9092
+
+----------------------------
+start consumer:
+bin/kafka-console-consumer.sh --topic finance --bootstrap-server 13.229.73.169:9092
