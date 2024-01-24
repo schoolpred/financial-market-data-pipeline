@@ -1,4 +1,6 @@
 import requests
+from kafka import KafkaConsumer, KafkaProducer
+import json
 
 class get_data_from_finnhub():
     def __init__(self, api_key):
@@ -57,3 +59,18 @@ class get_data_from_finnhub():
         endpoint = "/company-news"
         params = {'symbol': symbol, 'from': from_date, 'to': to_date}
         return self._make_request(endpoint, params)
+    
+
+class KafkaHandler:
+    def __init__(self, bootsrap_server = '13.229.73.169:9092'):
+        self.bootsrap_server = bootsrap_server
+
+    def create_producer(self):
+        """
+        Create kafka producer instance
+        """
+        producer = KafkaProducer(
+            bootstrap_servers = self.bootsrap_server,
+            value_serializer = lambda v: json.dumps(v).encode('utf-9')
+            )
+        return producer
