@@ -62,15 +62,51 @@ class get_data_from_finnhub():
     
 
 class KafkaHandler:
-    def __init__(self, bootsrap_server = '13.229.73.169:9092'):
-        self.bootsrap_server = bootsrap_server
+    def __init__(self, bootstrap_server = '13.229.73.169:9092'):
+        self.bootstrap_server = bootstrap_server
 
     def create_producer(self):
         """
         Create kafka producer instance
         """
         producer = KafkaProducer(
-            bootstrap_servers = self.bootsrap_server,
-            value_serializer = lambda v: json.dumps(v).encode('utf-9')
+            bootstrap_servers = self.bootstrap_server,
+            value_serializer = lambda v: json.dumps(v).encode('utf-8')
             )
         return producer
+    
+    def produce_message(self, topic, message):
+        """
+        Produce a message to given kafka topic
+        """
+        producer = self.create_producer()
+        producer.send(topic, value=message)
+        producer.flush()
+        producer.close()
+
+    def create_consumer(self, topic):
+        """
+        Create kafka consumer instance
+        """
+        consumer = KafkaConsumer(
+            topic,
+            bootstrap_servers=self.bootstrap_server,
+            value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+        )
+        return consumer
+    
+    def consume_message(self, topic):
+        """
+        consume message from given kafka topic
+        """
+        consumer = self.create_consumer(topic)
+        messages = []
+
+        try:
+            for message in consumer:
+                messages.append(message.value)
+                if len(messages) >= 5: #limit consume 5 message
+                    break
+        finally:
+            consumer.close
+        return messages 
