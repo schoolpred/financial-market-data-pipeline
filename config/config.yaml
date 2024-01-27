@@ -1,3 +1,23 @@
 # API Configuration
 api:
   key: cmlnl2pr01qmvr47qvs0cmlnl2pr01qmvr47qvsg
+
+stocks:
+  - AAPL
+  - GOOGL
+  - MSFT
+  - AMZN
+  - NVDA
+  - META
+  - TSLA
+  - V
+  - wMT
+  - MA
+  - JNJ
+
+kafka:
+  bootstrap_server: 13.229.73.169:9092
+  topic: finance
+
+s3:
+  bucket_name: kafka-finance

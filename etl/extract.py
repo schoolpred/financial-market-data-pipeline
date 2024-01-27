@@ -2,7 +2,7 @@ import requests
 from kafka import KafkaConsumer, KafkaProducer
 import json
 
-class get_data_from_finnhub():
+class GetDataFromAPI:
     def __init__(self, api_key):
         self.api_key = api_key
         self.base_url = "https://finnhub.io/api/v1"
@@ -52,17 +52,17 @@ class get_data_from_finnhub():
         params = {'symbol': symbol}
         return self._make_request(endpoint, params)
     
-    def get_company_news(self, symbol, from_date, to_date):
+    def get_company_news(self, symbol, from_date, to_date, date_format="%Y-%m-%d"):
         """
         Get company news for a given symbol
         """
         endpoint = "/company-news"
-        params = {'symbol': symbol, 'from': from_date, 'to': to_date}
+        params = {'symbol': symbol, 'from': from_date.strftime(date_format), 'to': to_date.strftime(date_format)}
         return self._make_request(endpoint, params)
     
 
 class KafkaHandler:
-    def __init__(self, bootstrap_server = '13.229.73.169:9092'):
+    def __init__(self, bootstrap_server):
         self.bootstrap_server = bootstrap_server
 
     def create_producer(self):
@@ -91,7 +91,8 @@ class KafkaHandler:
         consumer = KafkaConsumer(
             topic,
             bootstrap_servers=self.bootstrap_server,
-            value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+            value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+            consumer_timeout_ms=30000 #consumer doesn't see any message for 30 second, close the session
         )
         return consumer
     
