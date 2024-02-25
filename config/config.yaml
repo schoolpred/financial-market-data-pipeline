@@ -4,16 +4,16 @@ api:
 
 stocks:
   - AAPL
-  - GOOGL
-  - MSFT
-  - AMZN
-  - NVDA
-  - META
-  - TSLA
-  - V
-  - wMT
-  - MA
-  - JNJ
+  # - GOOGL
+  # - MSFT
+  # - AMZN
+  # - NVDA
+  # - META
+  # - TSLA
+  # - V
+  # - wMT
+  # - MA
+  # - JNJ
 
 kafka:
   bootstrap_server: 13.229.73.169:9092
