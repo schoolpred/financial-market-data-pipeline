@@ -84,30 +84,20 @@ class KafkaHandler:
         producer.flush()
         producer.close()
 
-    def create_consumer(self, topic):
+    def create_consumer(self, topic, consumer_timeout_ms=None):
         """
         Create kafka consumer instance
         """
+        consumer_config = {
+            'bootstrap_servers': self.bootstrap_server,
+            'value_deserializer': lambda x: json.loads(x.decode('utf-8'))
+        }
+
+        if consumer_timeout_ms is not None:
+            consumer_config['consumer_timeout_ms'] = consumer_timeout_ms
+
         consumer = KafkaConsumer(
             topic,
-            bootstrap_servers=self.bootstrap_server,
-            value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-            consumer_timeout_ms=30000 #consumer doesn't see any message for 30 second, close the session
+            **consumer_config
         )
         return consumer
-    
-    def consume_message(self, topic):
-        """
-        consume message from given kafka topic
-        """
-        consumer = self.create_consumer(topic)
-        messages = []
-
-        try:
-            for message in consumer:
-                messages.append(message.value)
-                if len(messages) >= 5: #limit consume 5 message
-                    break
-        finally:
-            consumer.close
-        return messages 

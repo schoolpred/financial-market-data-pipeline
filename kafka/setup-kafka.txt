@@ -1,5 +1,8 @@
 setup kafka in EC2 instant
 
+Connect to ec2:
+ssh -i "kafka-de.pem" ec2-user@ec2-13-229-73-169.ap-southeast-1.compute.amazonaws.com
+
 wget https://downloads.apache.org/kafka/3.6.1/kafka_2.12-3.6.1.tgz
 tar -xvf kafka_2.12-3.6.1.tgz
 
