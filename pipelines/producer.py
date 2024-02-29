@@ -17,12 +17,20 @@ def main():
         stocks = config['stocks']
         kafka_server = config['kafka']['bootstrap_server']
         kafka_topic = config['kafka']['topic']
-        bucket_name = config['s3']['bucket_name']
 
 
     get_data = GetDataFromAPI(api_key)
 
-    all_us_stocks = get_data.get_list_symbols('US')
+    #get all us stock data
+    all_us_stocks_raw = get_data.get_list_symbols('US')[:2]
+    
+    #convert stock format from a list of dicts to a dict of dicts, in order to send to producer at once
+    all_us_stocks = {}
+    for stock in all_us_stocks_raw:
+        single_stock = {stock['symbol']: stock}
+        all_us_stocks.update(single_stock)
+
+    #get stock detail
     company_profile = {}
     basic_financial = {}
     stock_price = {}
@@ -35,20 +43,13 @@ def main():
         company_news[stock] = get_data.get_company_news(stock, from_date=from_date, to_date=to_date)
 
     finance_data = [company_profile, basic_financial, stock_price, company_news]
-    # with open('tests/test.json', 'w') as file:
-    #     json.dump(finance_data, file, indent=4)
-    # produce and consume data in kafka
+
     kafka = KafkaHandler(kafka_server)
     
-    #send all stock to kafka
-    num = 0
-    for stock in all_us_stocks:
-        kafka.produce_message(topic=kafka_topic, message=stock)
-        num += 1
-        if num > 10:
-            break
+    # send all stock to kafka
+    kafka.produce_message(topic=kafka_topic, message=all_us_stocks)
 
-
+    #send finance data to producer
     for idx, data in enumerate(finance_data):
         print(idx)
         kafka.produce_message(topic=kafka_topic, message=data)
