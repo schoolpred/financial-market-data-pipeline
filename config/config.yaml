@@ -16,7 +16,7 @@ stocks:
   # - JNJ
 
 kafka:
-  bootstrap_server: 13.229.73.169:9092
+  bootstrap_server: 13.215.207.142:9092
   topic: finance
 
 s3:
