@@ -1,5 +1,5 @@
 import sys
-sys.path.append(r'D:\school\depro\financial-market-data-pipeline')  # Adjust the path based on the directory structure
+sys.path.append(r'/mnt/e/school24/deproject/financial-market-data-pipeline')  # Adjust the path based on the directory structure
 
 import yaml
 from etl import GetDataFromAPI, KafkaHandler
@@ -33,7 +33,7 @@ def main():
             json.dump(msg.value, f)
 
         #send to s3
-        s3.upload_file(file_name, bucket_name, file_name)
+        s3.upload_file(f'tests/{file_name}', bucket_name, file_name)
 
         #remove local file
         os.remove(f'tests/{file_name}')

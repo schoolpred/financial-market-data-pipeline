@@ -1,5 +1,5 @@
 import sys
-sys.path.append(r'D:\school\depro\financial-market-data-pipeline')  # Adjust the path based on the directory structure
+sys.path.append(r'/mnt/e/school24/deproject/financial-market-data-pipeline')  # Adjust the path based on the directory structure
 
 import yaml
 from etl import GetDataFromAPI, KafkaHandler
