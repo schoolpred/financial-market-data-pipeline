@@ -27,15 +27,17 @@ def main():
     count = 0
     for msg in consumer:
         print(count)
-        file_name = f"message_{msg.offset}.json"
+        cate = msg.value.get('category')
+        file_name = f"message_{cate}.json"
 
         with open(f'tests/{file_name}', 'w') as f:
             json.dump(msg.value, f)
 
-        #send to s3
-        s3.upload_file(f'tests/{file_name}', bucket_name, file_name)
-
-        #remove local file
+        print("write done")
+        # send to s3
+        s3.upload_file(f'tests/{file_name}', bucket_name, 'raw_json/{}'.format(file_name))
+        print(f"done upload {file_name}")
+        # remove local file
         os.remove(f'tests/{file_name}')
 
         count+=1
