@@ -8,6 +8,41 @@ from datetime import datetime, timedelta
 import boto3
 import json
 
+def split_2_smaller_chunk(large_dict_encoded, key, chunk_size = 1000000):
+    """
+    divide a large dictionary into smaller parts for sending to Kafka
+    """
+
+    #additional key
+    additional_key = {"category": key + '_{}'}
+
+    # Slice the dictionary into chunks
+    chunks = []
+    start_idx = 0
+    start_key = 1
+
+    while start_idx < len(large_dict_encoded):
+        additional_key["category"] = additional_key["category"].format(start_key)
+        additional_key_encode = ','.encode('utf-8') + json.dumps(additional_key).encode('utf-8')
+        #size of addtional key
+        additional_key_size = sys.getsizeof(additional_key_encode)
+
+        end_idx = start_idx + chunk_size - additional_key_size  # Adjusted chunk size to fit additional string
+
+        # Ensure end index doesn't exceed the length of the dictionary string
+        if end_idx > len(large_dict_encoded):
+            end_idx = len(large_dict_encoded)
+
+        # Create a chunk and append the additional string
+        chunk = large_dict_encoded[start_idx:end_idx] + additional_key_encode
+
+        chunks.append(chunk)
+
+        start_idx = end_idx
+        start_key += 1
+
+    return chunks
+
 def main():
     from_date = datetime.now() - timedelta(days=7)
     to_date = datetime.now()
@@ -30,9 +65,6 @@ def main():
     for stock in all_us_stocks_raw:
         single_stock = {stock['symbol']: stock}
         all_us_stocks.update(single_stock)
-    
-    #add category
-    all_us_stocks.update({"category": "stock_info"})
 
     # get stock detail
     company_profile = {"category": "company_info"}
@@ -46,18 +78,30 @@ def main():
         stock_price[stock] = get_data.get_stock_price(stock)
         company_news[stock] = get_data.get_company_news(stock, from_date=from_date, to_date=to_date)
 
-    finance_data = [company_profile, basic_financial, stock_price, company_news]
+    finance_data = [company_profile, basic_financial , company_news , stock_price ] 
 
     kafka = KafkaHandler(kafka_server)
     
     # send all stock to kafka
-    kafka.produce_message(topic=kafka_topic, message=all_us_stocks)
+    producer = kafka.create_producer(encode=False)
 
-    #send finance data to producer
-    for idx, data in enumerate(finance_data):
-        print(idx)
-        kafka.produce_message(topic=kafka_topic, message=data)
-        time.sleep(5)
+    all_us_stocks_chunks = split_2_smaller_chunk(json.dumps(all_us_stocks).encode('utf-8'), "stock_info")
+
+    for us_stock in all_us_stocks_chunks:
+        future = producer.send(kafka_topic, value=us_stock)
+        try:
+            record_metadata = future.get(timeout=10)
+            print(f"Message sent to topic {record_metadata.topic} partition {record_metadata.partition} offset {record_metadata.offset}")
+        except Exception as e:
+            print(f"Failed to send message: {e}")
+    print('done sent all stock')
+    # time.sleep(15)
+
+    # send finance data to producer
+    # for idx, data in enumerate(finance_data):
+    #     print(idx)
+    #     kafka.produce_message(topic=kafka_topic, message=data)
+    #     time.sleep(10)
 
 if __name__ == "__main__":
     main()
