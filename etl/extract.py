@@ -65,13 +65,17 @@ class KafkaHandler:
     def __init__(self, bootstrap_server):
         self.bootstrap_server = bootstrap_server
 
-    def create_producer(self):
+    def create_producer(self, encode=True):
         """
         Create kafka producer instance
         """
+        if encode:
+            value_serializer = lambda v: json.dumps(v).encode('utf-8')
+        else:
+            value_serializer = lambda v: v
         producer = KafkaProducer(
             bootstrap_servers = self.bootstrap_server,
-            value_serializer = lambda v: json.dumps(v).encode('utf-8')
+            value_serializer = value_serializer
             )
         return producer
     
