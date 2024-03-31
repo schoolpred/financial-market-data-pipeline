@@ -53,28 +53,11 @@ def main():
 
     #initialize kafka
     kafka = KafkaHandler(kafka_server)
-    
-    # # send all stock to kafka
-    # producer = kafka.create_producer(encode=False)
-
-    # all_us_stocks_chunks = split_2_smaller_chunk(json.dumps(all_us_stocks).encode('utf-8'), "stock_info")
-
-    # for us_stock in all_us_stocks_chunks:
-    #     future = producer.send(kafka_topic, value=us_stock)
-    #     try:
-    #         record_metadata = future.get(timeout=10)
-    #         print(f"Message sent to topic {record_metadata.topic} partition {record_metadata.partition} offset {record_metadata.offset}")
-    #     except Exception as e:
-    #         print(f"Failed to send message: {e}")
-    # print('done sent all stock')
-    # time.sleep(15)
 
     # send finance data to producer
     for idx, data in enumerate(finance_data):
         print(idx)
         for msg in data:
-            # with open(f'tests/{idx}', 'w') as f:
-            #     json.dump(data[0:1], f)
             kafka.produce_message(topic=kafka_topic, message=msg)
             time.sleep(5)
 
