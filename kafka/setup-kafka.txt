@@ -3,11 +3,11 @@ setup kafka in EC2 instant
 Connect to ec2:
 ssh -i "kafka-key.pem" ec2-user@ec2-13-215-207-142.ap-southeast-1.compute.amazonaws.com
 
-wget https://downloads.apache.org/kafka/3.6.1/kafka_2.12-3.6.1.tgz
-tar -xvf kafka_2.12-3.6.1.tgz
+wget https://downloads.apache.org/kafka/3.7.0/kafka_2.12-3.7.0.tgz
+tar -xvf kafka_2.12-3.7.0.tgz
 
 sudo yum install java-1.8.0-openjdk
-cd kafka_2.12-3.3.1
+cd kafka_2.12-3.7.0
 
 ----------------------------------------
 Start Zoo-keeper
@@ -17,18 +17,18 @@ bin/zookeeper-server-start.sh config/zookeeper.properties
 ---------------------
 Start Kafka-server:
 export KAFKA_HEAP_OPTS="-Xmx256M -Xms128M"
-cd kafka_2.12-3.3.1
+cd kafka_2.12-3.7.0
 bin/kafka-server-start.sh config/server.properties
 
 ---------------
 Create the topic:
-bin/kafka-topics.sh --create --topic finance --bootstrap-server 13.215.207.142:9092 --replication-factor 1 --partitions 1
+bin/kafka-topics.sh --create --topic finance --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
 
 
 -----------------------
 Start Producer
-bin/kafka-console-producer.sh --topic finance --bootstrap-server 13.215.207.142:9092
+bin/kafka-console-producer.sh --topic finance --bootstrap-server localhost:9092
 
 ----------------------------
 start consumer:
-bin/kafka-console-consumer.sh --topic finance --bootstrap-server 13.215.207.142:9092
+bin/kafka-console-consumer.sh --topic finance --bootstrap-server localhost:9092
