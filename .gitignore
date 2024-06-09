@@ -3,3 +3,4 @@
 /workspace.code-workspace
 /spark_transform/test.ipynb
 /raw_data
+/config/aws_key.yaml
