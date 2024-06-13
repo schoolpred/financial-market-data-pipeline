@@ -62,30 +62,14 @@ def merge_period_col(df, list_period_col, list_value_col, period_format):
         *final_sl_tr
     )\
     .groupBy("symbol", "period")\
-    .agg(*exprs)\
+    .agg(*exprs)
+    
     return exploded_df
-def main():
-    #load_config
-    with open('../config/config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-        stocks = config['stocks']
-    with open('../config/aws_key.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-        access_key = config['aws']['aws_access_key_id']
-        access_secret = config['aws']['aws_secret_access_key']
-    #initianilize spark
-    spark = SparkSession.builder \
-        .appName("TransformJSONToS3") \
-        .config("spark.hadoop.fs.s3a.access.key", access_key) \
-        .config("spark.hadoop.fs.s3a.secret.key", access_secret) \
-        .config('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
-        .config('spark.executor.instances', 4)\
-        .config('spark.driver.memory', "4g")\
-        .config('spark.executor.memory', "2g")\
-        .getOrCreate()
-    # spark.sparkContext.setLogLevel("DEBUG")
-    df1 = spark.read.format("json").load("../raw_data/message_basic_financial_1.json")
-    df2 = spark.read.format("json").load("../raw_data/message_basic_financial_2.json")
+
+def transform_quarterly_yearly_metrics(stocks, df1, df2):
+    """
+    transform quarterly and yearly metrics in basic_financial file
+    """
     #quarterly metrics
     print("quarterly")
     for idx, stock in enumerate(stocks):
@@ -140,5 +124,57 @@ def main():
         .format("csv")\
         .save("s3a://finance-project-truonglede/transformed_data/yearly_metrics.csv")
     print("done write yearly")
+
+def transform_basic_metrics(stocks, df1, df2):
+    """
+    transform other basic metrics in basic_financial file
+    """
+    for idx, stock in enumerate(stocks):
+        print(stock)
+        if stock in df1.columns:
+            if idx < 1:
+                final = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
+            else:
+                sub_df = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
+                final = final.unionByName(sub_df, allowMissingColumns=True)
+        elif stock in df2.columns:
+            if idx < 1:
+                final = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
+            else:
+                sub_df = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
+                final = final.unionByName(sub_df, allowMissingColumns=True)
+    final\
+        .coalesce(1)\
+        .write\
+        .mode('overwrite')\
+        .option("header", "true")\
+        .format("csv")\
+        .save("s3a://finance-project-truonglede/transformed_data/basic_metrics.csv")
+
 if __name__ == "__main__":
-    main()
+    #load_config
+    with open('../config/config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+        stocks = config['stocks']
+    with open('../config/aws_key.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+        access_key = config['aws']['aws_access_key_id']
+        access_secret = config['aws']['aws_secret_access_key']
+
+    #initianilize spark
+    spark = SparkSession.builder \
+        .appName("TransformJSONToS3") \
+        .config("spark.hadoop.fs.s3a.access.key", access_key) \
+        .config("spark.hadoop.fs.s3a.secret.key", access_secret) \
+        .config('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
+        .config('spark.executor.instances', 4)\
+        .config('spark.driver.memory', "4g")\
+        .config('spark.executor.memory', "2g")\
+        .getOrCreate()
+    # spark.sparkContext.setLogLevel("DEBUG")
+    df1 = spark.read.format("json").load("../raw_data/message_basic_financial_1.json")
+    df2 = spark.read.format("json").load("../raw_data/message_basic_financial_2.json")
+
+    transform_quarterly_yearly_metrics(stocks=stocks, df1=df1, df2=df2)
+
+    transform_basic_metrics(stocks=stocks, df1=df1, df2=df2)
