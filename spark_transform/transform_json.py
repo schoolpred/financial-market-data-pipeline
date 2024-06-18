@@ -151,6 +151,58 @@ def transform_basic_metrics(stocks, df1, df2):
         .format("csv")\
         .save("s3a://finance-project-truonglede/transformed_data/basic_metrics.csv")
 
+def transform_company_price_info(stocks, df):
+    """
+    transform company info file
+    """
+    for idx, stock in enumerate(stocks):
+        try:
+            if idx < 1:
+                final = df.select(stock + ".symbol", stock + ".metrics.*")
+            else:
+                sub_df = df.select(stock + ".symbol", stock + ".metrics.*")
+                
+        except:
+            print("error at: " + stock)
+        finally:
+            final = final.unionByName(sub_df, allowMissingColumns=True)
+        
+    return final
+
+def transform_news(stocks, df1, df2):
+    """
+    transform news
+    """
+    for idx, stock in enumerate(stocks):
+        if stock in df1.columns:
+            try:
+                if idx < 1:
+                    final = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                                .select(f"{stock}.symbol", "metrics.*")
+                else:
+                    sub_df = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                                .select(f"{stock}.symbol", "metrics.*")
+                    
+            except:
+                print("error at: " + stock)
+            finally:
+                final = final.unionByName(sub_df, allowMissingColumns=True)
+        elif stock in df2.columns:
+            try:
+                if idx < 1:
+                    final = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                                .select(f"{stock}.symbol", "metrics.*")
+                else:
+                    sub_df = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                                .select(f"{stock}.symbol", "metrics.*")
+                    
+            except:
+                print("error at: " + stock)
+            finally:
+                final = final.unionByName(sub_df, allowMissingColumns=True)
+    return final
+
+
 if __name__ == "__main__":
     #load_config
     with open('../config/config.yaml', 'r') as file:
@@ -178,3 +230,16 @@ if __name__ == "__main__":
     transform_quarterly_yearly_metrics(stocks=stocks, df1=df1, df2=df2)
 
     transform_basic_metrics(stocks=stocks, df1=df1, df2=df2)
+
+    #company info transform
+    company_info_file = spark.read.format("json").load("../raw_data/message_company_info_1.json")
+    company_info = transform_company_price_info(company_info_file, stocks)
+
+    #news transform
+    news1 = spark.read.format("json").load("../raw_data/message_news_1.json")
+    news2 = spark.read.format("json").load("../raw_data/message_news_2.json")
+    news = transform_news(stocks, news1, news2)
+
+    #price transform
+    price_file = spark.read.format("json").load("../raw_data/message_price_1.json")
+    price = transform_company_price_info(price_file, stocks)
