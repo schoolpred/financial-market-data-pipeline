@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 import pyspark.sql.utils
 import yaml
-import boto3
+import os
 
 def flatten_df(df, symbol, series_to_flatten):
     """
@@ -203,6 +203,32 @@ def transform_news(stocks, df1, df2):
     return final
 
 
+def transform_stock_info(dir_path):
+    """
+    transform message stock info files
+    """
+
+    stock_info_file = [file_name for file_name in os.listdir(dir_path) if file_name.startswith("message_stock_info")]
+    continue_run = 0 #limit get stock info
+
+    for file in stock_info_file:
+        while continue_run == 0:
+            df = spark.read.format("json").load(f"{dir_path}/{file}")
+            df.cache()
+            print(file)
+            for idx, col in enumerate(df.columns):
+                print(col)
+                if idx < 1:
+                    final = df.select(f"{col}.*")
+                elif idx <= 50:
+                    sub_df = df.select(f"{col}.*")
+                    final = final.unionByName(sub_df, allowMissingColumns=True)
+                else:
+                    continue_run = 1 #stop
+                    break
+            df.unpersist()
+    return final
+
 if __name__ == "__main__":
     #load_config
     with open('../config/config.yaml', 'r') as file:
@@ -243,3 +269,7 @@ if __name__ == "__main__":
     #price transform
     price_file = spark.read.format("json").load("../raw_data/message_price_1.json")
     price = transform_company_price_info(price_file, stocks)
+
+    #stock info
+    stock_info = transform_stock_info("../raw_data")
+    
