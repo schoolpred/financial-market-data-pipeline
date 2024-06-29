@@ -89,14 +89,8 @@ def transform_quarterly_yearly_metrics(stocks, df1, df2):
     list_period = [col for col in final.columns if col.endswith("_period")]
     list_v = [col for col in final.columns if col.endswith("_v")]
     qt_final = merge_period_col(df=final, list_period_col=list_period, list_value_col=list_v, period_format='QUARTER')
-    qt_final\
-        .coalesce(1)\
-        .write\
-        .mode('overwrite')\
-        .option("header", "true")\
-        .format("csv")\
-        .save("s3a://finance-project-truonglede/transformed_data/quarterly_metrics.csv")
     print("done write quarterly")
+
     #yearly metrics
     print("yearly")
     for idx, stock in enumerate(stocks):
@@ -116,14 +110,9 @@ def transform_quarterly_yearly_metrics(stocks, df1, df2):
     list_period = [col for col in final.columns if col.endswith("_period")]
     list_v = [col for col in final.columns if col.endswith("_v")]
     year_final = merge_period_col(df=final, list_period_col=list_period, list_value_col=list_v, period_format='YEAR')
-    year_final\
-        .coalesce(1)\
-        .write\
-        .mode('overwrite')\
-        .option("header", "true")\
-        .format("csv")\
-        .save("s3a://finance-project-truonglede/transformed_data/yearly_metrics.csv")
     print("done write yearly")
+
+    return qt_final, year_final
 
 def transform_basic_metrics(stocks, df1, df2):
     """
@@ -133,23 +122,18 @@ def transform_basic_metrics(stocks, df1, df2):
         print(stock)
         if stock in df1.columns:
             if idx < 1:
-                final = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
+                basic_final = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
             else:
-                sub_df = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
-                final = final.unionByName(sub_df, allowMissingColumns=True)
+                basic_sub_df = df1.select(stock + ".symbol",stock + ".metrics.metric.*")
+                basic_final = basic_final.unionByName(basic_sub_df, allowMissingColumns=True)
         elif stock in df2.columns:
             if idx < 1:
-                final = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
+                basic_final = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
             else:
-                sub_df = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
-                final = final.unionByName(sub_df, allowMissingColumns=True)
-    final\
-        .coalesce(1)\
-        .write\
-        .mode('overwrite')\
-        .option("header", "true")\
-        .format("csv")\
-        .save("s3a://finance-project-truonglede/transformed_data/basic_metrics.csv")
+                basic_sub_df = df2.select(stock + ".symbol",stock + ".metrics.metric.*")
+                basic_final = basic_final.unionByName(basic_sub_df, allowMissingColumns=True)
+    
+    return basic_final
 
 def transform_company_price_info(stocks, df):
     """
@@ -158,16 +142,16 @@ def transform_company_price_info(stocks, df):
     for idx, stock in enumerate(stocks):
         try:
             if idx < 1:
-                final = df.select(stock + ".symbol", stock + ".metrics.*")
+                price_final = df.select(stock + ".symbol", stock + ".metrics.*")
             else:
-                sub_df = df.select(stock + ".symbol", stock + ".metrics.*")
+                price_sub_df = df.select(stock + ".symbol", stock + ".metrics.*")
                 
-        except:
-            print("error at: " + stock)
+        except Exception as e:
+            print(f"Error at: {stock}, Exception: {e}")
         finally:
-            final = final.unionByName(sub_df, allowMissingColumns=True)
+            price_final = price_final.unionByName(price_sub_df, allowMissingColumns=True)
         
-    return final
+    return price_final
 
 def transform_news(stocks, df1, df2):
     """
@@ -177,30 +161,30 @@ def transform_news(stocks, df1, df2):
         if stock in df1.columns:
             try:
                 if idx < 1:
-                    final = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                    news_final = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
                 else:
-                    sub_df = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                    news_sub_df = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
                     
-            except:
-                print("error at: " + stock)
+            except Exception as e:
+                print(f"Error at: {stock}, Exception: {e}")
             finally:
-                final = final.unionByName(sub_df, allowMissingColumns=True)
+                news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)
         elif stock in df2.columns:
             try:
                 if idx < 1:
-                    final = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                    news_final = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
                 else:
-                    sub_df = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
+                    news_sub_df = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
                     
-            except:
-                print("error at: " + stock)
+            except Exception as e:
+                print(f"Error at: {stock}, Exception: {e}")
             finally:
-                final = final.unionByName(sub_df, allowMissingColumns=True)
-    return final
+                news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)
+    return news_final
 
 
 def transform_stock_info(dir_path):
@@ -219,57 +203,78 @@ def transform_stock_info(dir_path):
             for idx, col in enumerate(df.columns):
                 print(col)
                 if idx < 1:
-                    final = df.select(f"{col}.*")
+                    info_final = df.select(f"{col}.*")
                 elif idx <= 50:
-                    sub_df = df.select(f"{col}.*")
-                    final = final.unionByName(sub_df, allowMissingColumns=True)
+                    info_sub_df = df.select(f"{col}.*")
+                    info_final = info_final.unionByName(info_sub_df, allowMissingColumns=True)
                 else:
                     continue_run = 1 #stop
                     break
             df.unpersist()
-    return final
+    return info_final
+
+def write_csv_to_gcp(df, gcp_path):
+    """
+    write csv file google cloud
+    """
+    return df\
+            .coalesce(1)\
+            .write\
+            .mode('overwrite')\
+            .option("header", "true")\
+            .format("csv")\
+            .save(gcp_path)
 
 if __name__ == "__main__":
     #load_config
     with open('../config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
         stocks = config['stocks']
+        gch_path = config['gcp']['path']
     with open('../config/aws_key.yaml', 'r') as file:
         config = yaml.safe_load(file)
-        access_key = config['aws']['aws_access_key_id']
-        access_secret = config['aws']['aws_secret_access_key']
 
     #initianilize spark
     spark = SparkSession.builder \
-        .appName("TransformJSONToS3") \
-        .config("spark.hadoop.fs.s3a.access.key", access_key) \
-        .config("spark.hadoop.fs.s3a.secret.key", access_secret) \
-        .config('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
-        .config('spark.executor.instances', 4)\
-        .config('spark.driver.memory', "4g")\
-        .config('spark.executor.memory', "2g")\
+        .appName("TransformJSONToGCP") \
         .getOrCreate()
+    
     # spark.sparkContext.setLogLevel("DEBUG")
-    df1 = spark.read.format("json").load("../raw_data/message_basic_financial_1.json")
-    df2 = spark.read.format("json").load("../raw_data/message_basic_financial_2.json")
+    financial_file1 = spark.read.format("json").load("../raw_data/message_basic_financial_1.json")
+    financial_file2 = spark.read.format("json").load("../raw_data/message_basic_financial_2.json")
 
-    transform_quarterly_yearly_metrics(stocks=stocks, df1=df1, df2=df2)
-
-    transform_basic_metrics(stocks=stocks, df1=df1, df2=df2)
+    quarterly_financial , yearly_financial = transform_quarterly_yearly_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
+    basic_financial = transform_basic_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
+    print("done financial")
 
     #company info transform
     company_info_file = spark.read.format("json").load("../raw_data/message_company_info_1.json")
-    company_info = transform_company_price_info(company_info_file, stocks)
+    company_info = transform_company_price_info(stocks, company_info_file)
+    print("done company_info")
 
     #news transform
     news1 = spark.read.format("json").load("../raw_data/message_news_1.json")
     news2 = spark.read.format("json").load("../raw_data/message_news_2.json")
     news = transform_news(stocks, news1, news2)
+    print("done news")
 
     #price transform
     price_file = spark.read.format("json").load("../raw_data/message_price_1.json")
     price = transform_company_price_info(price_file, stocks)
+    print("done price")
 
     #stock info
     stock_info = transform_stock_info("../raw_data")
+    print("done stock_info")
     
+    #write to gcp
+    write_csv_to_gcp(quarterly_financial, gch_path + "quarterly_financial" )
+    write_csv_to_gcp(yearly_financial, gch_path + "yearly_financial" )
+    write_csv_to_gcp(basic_financial, gch_path + "basic_financial" )
+    write_csv_to_gcp(company_info, gch_path + "company_info" )
+    write_csv_to_gcp(news, gch_path + "news" )
+    write_csv_to_gcp(price, gch_path + "price" )
+    write_csv_to_gcp(stock_info, gch_path + "stock_info" )
+
+    #stop spark
+    spark.stop()

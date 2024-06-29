@@ -19,5 +19,5 @@ kafka:
   bootstrap_server: localhost:9092
   topic: finance
 
-s3:
-  bucket_name: kafka-finance
+gcp:
+  path: gs://financial-deproject/ 
