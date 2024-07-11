@@ -1,8 +1,10 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.types import DateType
 import pyspark.sql.functions as F
 import pyspark.sql.utils
 import yaml
 import os
+import datetime
 
 def flatten_df(df, symbol, series_to_flatten):
     """
@@ -139,17 +141,17 @@ def transform_company_price_info(stocks, df):
     """
     transform company info file
     """
+    price_final = None
     for idx, stock in enumerate(stocks):
         try:
             if idx < 1:
                 price_final = df.select(stock + ".symbol", stock + ".metrics.*")
             else:
                 price_sub_df = df.select(stock + ".symbol", stock + ".metrics.*")
-                
+                price_final = price_final.unionByName(price_sub_df, allowMissingColumns=True)
         except Exception as e:
             print(f"Error at: {stock}, Exception: {e}")
-        finally:
-            price_final = price_final.unionByName(price_sub_df, allowMissingColumns=True)
+            
         
     return price_final
 
@@ -166,11 +168,10 @@ def transform_news(stocks, df1, df2):
                 else:
                     news_sub_df = df1.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
-                    
+                    news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)
             except Exception as e:
                 print(f"Error at: {stock}, Exception: {e}")
-            finally:
-                news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)
+
         elif stock in df2.columns:
             try:
                 if idx < 1:
@@ -179,11 +180,12 @@ def transform_news(stocks, df1, df2):
                 else:
                     news_sub_df = df2.withColumn("metrics", F.explode(f"{stock}.metrics"))\
                                 .select(f"{stock}.symbol", "metrics.*")
-                    
+                    news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)                   
             except Exception as e:
                 print(f"Error at: {stock}, Exception: {e}")
-            finally:
-                news_final = news_final.unionByName(news_sub_df, allowMissingColumns=True)
+
+    #remove "," in the summary column
+    news_final = news_final.withColumn("summary", F.regexp_replace(F.col("summary"), ",", ";"))                    
     return news_final
 
 
@@ -196,24 +198,27 @@ def transform_stock_info(dir_path):
     continue_run = 0 #limit get stock info
 
     for file in stock_info_file:
-        while continue_run == 0:
-            df = spark.read.format("json").load(f"{dir_path}/{file}")
-            df.cache()
-            print(file)
-            for idx, col in enumerate(df.columns):
-                print(col)
-                if idx < 1:
-                    info_final = df.select(f"{col}.*")
-                elif idx <= 50:
-                    info_sub_df = df.select(f"{col}.*")
-                    info_final = info_final.unionByName(info_sub_df, allowMissingColumns=True)
-                else:
-                    continue_run = 1 #stop
-                    break
-            df.unpersist()
+        try:
+            while continue_run == 0:
+                df = spark.read.format("json").load(f"{dir_path}/{file}")
+                df.cache()
+                print(file)
+                for idx, col in enumerate(df.columns):
+                    print(col)
+                    if idx < 1:
+                        info_final = df.select(f"{col}.*")
+                    elif idx <= 50:
+                        info_sub_df = df.select(f"{col}.*")
+                        info_final = info_final.unionByName(info_sub_df, allowMissingColumns=True)
+                    else:
+                        continue_run = 1 #stop
+                        break
+                df.unpersist()
+        except Exception as e:
+            print(f"An error occurred: {e}")
     return info_final
 
-def write_csv_to_gcp(df, gcp_path):
+def write_csv_to_gcp(df, gcp_path, format="csv"):
     """
     write csv file google cloud
     """
@@ -222,8 +227,24 @@ def write_csv_to_gcp(df, gcp_path):
             .write\
             .mode('overwrite')\
             .option("header", "true")\
-            .format("csv")\
+            .format(format)\
             .save(gcp_path)
+
+def rename_columns(df):
+    """
+    Function to rename all columns in a PySpark DataFrame by replacing '/' with '_'.
+    """
+    # Function to replace '/' with '_'
+    def replace_slash(col_name):
+        return col_name.replace('/', '_')
+
+    # Iterate through existing column names and create new column names
+    new_columns = [replace_slash(col_name) for col_name in df.schema.names]
+
+    # Apply renaming to the DataFrame
+    renamed_df = df.select([F.col(old_name).alias(new_name) for old_name, new_name in zip(df.schema.names, new_columns)])
+
+    return renamed_df
 
 if __name__ == "__main__":
     #load_config
@@ -245,6 +266,7 @@ if __name__ == "__main__":
 
     quarterly_financial , yearly_financial = transform_quarterly_yearly_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
     basic_financial = transform_basic_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
+    basic_financial = rename_columns(basic_financial)
     print("done financial")
 
     #company info transform
@@ -260,21 +282,43 @@ if __name__ == "__main__":
 
     #price transform
     price_file = spark.read.format("json").load("../raw_data/message_price_1.json")
-    price = transform_company_price_info(price_file, stocks)
+    price = transform_company_price_info(stocks, price_file)
     print("done price")
 
     #stock info
     stock_info = transform_stock_info("../raw_data")
     print("done stock_info")
+
+    #create dim date table
+    start_date = datetime.date(2020, 1, 1)
+    end_date = datetime.date(2025, 12, 31)
+
+    date_range = [start_date + datetime.timedelta(days=x) for x in range(0, (end_date - start_date).days + 1)]
+    date_df = spark.createDataFrame(date_range, DateType()).toDF("date")
+
+    #Extract Date Attributes
+    dim_date_df = date_df.withColumn("year", F.year(F.col("date"))) \
+        .withColumn("month", F.month(F.col("date"))) \
+        .withColumn("day", F.dayofmonth(F.col("date"))) \
+        .withColumn("day_of_week", F.dayofweek(F.col("date"))) \
+        .withColumn("week_of_year", F.weekofyear(F.col("date"))) \
+        .withColumn("quarter", F.quarter(F.col("date")))
     
+
+    #transform date columns
+    quarterly_financial = quarterly_financial.withColumn("period", F.to_date("period"))
+    yearly_financial = yearly_financial.withColumn("period", F.to_date("period"))
+
     #write to gcp
     write_csv_to_gcp(quarterly_financial, gch_path + "quarterly_financial" )
     write_csv_to_gcp(yearly_financial, gch_path + "yearly_financial" )
     write_csv_to_gcp(basic_financial, gch_path + "basic_financial" )
     write_csv_to_gcp(company_info, gch_path + "company_info" )
-    write_csv_to_gcp(news, gch_path + "news" )
+    write_csv_to_gcp(news, gch_path + "news", format = "json" ) #when writing to csv, news contains many complex characters such as / \ *, resulting in more columns than expected
     write_csv_to_gcp(price, gch_path + "price" )
     write_csv_to_gcp(stock_info, gch_path + "stock_info" )
+    write_csv_to_gcp(dim_date_df, gch_path + "dim_date" )
+
 
     #stop spark
     spark.stop()
