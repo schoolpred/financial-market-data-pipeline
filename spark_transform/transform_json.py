@@ -206,9 +206,9 @@ def transform_stock_info(dir_path):
                 for idx, col in enumerate(df.columns):
                     print(col)
                     if idx < 1:
-                        info_final = df.select(f"{col}.*")
+                        info_final = df.select(f"`{col}`.*")
                     elif idx <= 50:
-                        info_sub_df = df.select(f"{col}.*")
+                        info_sub_df = df.select(f"`{col}`.*")
                         info_final = info_final.unionByName(info_sub_df, allowMissingColumns=True)
                     else:
                         continue_run = 1 #stop
@@ -248,11 +248,11 @@ def rename_columns(df):
 
 if __name__ == "__main__":
     #load_config
-    with open('../config/config.yaml', 'r') as file:
+    with open('./config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
         stocks = config['stocks']
         gch_path = config['gcp']['path']
-    with open('../config/aws_key.yaml', 'r') as file:
+    with open('./config/aws_key.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
     #initianilize spark
@@ -261,8 +261,8 @@ if __name__ == "__main__":
         .getOrCreate()
     
     # spark.sparkContext.setLogLevel("DEBUG")
-    financial_file1 = spark.read.format("json").load("../raw_data/message_basic_financial_1.json")
-    financial_file2 = spark.read.format("json").load("../raw_data/message_basic_financial_2.json")
+    financial_file1 = spark.read.format("json").load("raw_data/message_basic_financial_1.json")
+    financial_file2 = spark.read.format("json").load("raw_data/message_basic_financial_2.json")
 
     quarterly_financial , yearly_financial = transform_quarterly_yearly_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
     basic_financial = transform_basic_metrics(stocks=stocks, df1=financial_file1, df2=financial_file2)
@@ -270,23 +270,23 @@ if __name__ == "__main__":
     print("done financial")
 
     #company info transform
-    company_info_file = spark.read.format("json").load("../raw_data/message_company_info_1.json")
+    company_info_file = spark.read.format("json").load("raw_data/message_company_info_1.json")
     company_info = transform_company_price_info(stocks, company_info_file)
     print("done company_info")
 
     #news transform
-    news1 = spark.read.format("json").load("../raw_data/message_news_1.json")
-    news2 = spark.read.format("json").load("../raw_data/message_news_2.json")
+    news1 = spark.read.format("json").load("raw_data/message_news_1.json")
+    news2 = spark.read.format("json").load("raw_data/message_news_2.json")
     news = transform_news(stocks, news1, news2)
     print("done news")
 
     #price transform
-    price_file = spark.read.format("json").load("../raw_data/message_price_1.json")
+    price_file = spark.read.format("json").load("raw_data/message_price_1.json")
     price = transform_company_price_info(stocks, price_file)
     print("done price")
 
     #stock info
-    stock_info = transform_stock_info("../raw_data")
+    stock_info = transform_stock_info("raw_data")
     print("done stock_info")
 
     #create dim date table

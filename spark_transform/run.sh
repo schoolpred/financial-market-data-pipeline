@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Define the paths
-GCS_CONNECTOR_JAR_PATH="../gcs-connector-hadoop2-2.2.2-shaded.jar"
-SERVICE_ACCOUNT_JSON_PATH="../deproject-427912-aeca8c315271.json"
-SPARK_SCRIPT_PATH="transform_json.py"
+GCS_CONNECTOR_JAR_PATH="gcs-connector-hadoop2-2.2.2-shaded.jar"
+SERVICE_ACCOUNT_JSON_PATH="deproject-427912-aeca8c315271.json"
+SPARK_SCRIPT_PATH="./spark_transform/transform_json.py"
 spark-submit \
   --jars $GCS_CONNECTOR_JAR_PATH \
   --conf "spark.hadoop.google.cloud.auth.service.account.enable=true" \
