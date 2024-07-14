@@ -93,7 +93,10 @@ Build a streaming data pipeline using Finnhub's real-time financial market data 
 6. **Data Modeling in BigQuery**
     - Execute the SQL script `data_modeling/bigquery_modeling.sql` in BigQuery.
 
-![](https://github.com/schoolpred/financial-market-data-pipeline/blob/main/data_modeling.pdf)
+
+![](https://github.com/schoolpred/financial-market-data-pipeline/blob/main/data_modeling.svg)
+
+
 
 ## Usage
 
