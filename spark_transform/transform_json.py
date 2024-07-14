@@ -308,6 +308,8 @@ if __name__ == "__main__":
     #transform date columns
     quarterly_financial = quarterly_financial.withColumn("period", F.to_date("period"))
     yearly_financial = yearly_financial.withColumn("period", F.to_date("period"))
+    news = news.withColumn("datetime", F.from_unixtime("datetime",'yyyy-MM-dd'))
+    price = price.withColumn("t", F.from_unixtime("t",'yyyy-MM-dd'))
 
     #write to gcp
     write_csv_to_gcp(quarterly_financial, gch_path + "quarterly_financial" )
