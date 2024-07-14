@@ -2,6 +2,8 @@
 
 Build a streaming data pipeline using Finnhub's real-time financial market data API. The workflow involves retrieving data from the Finnhub API, transforming it, streaming it through a Kafka server, saving files locally, processing the data with PySpark, storing it in Google Cloud Storage, and performing data modeling in BigQuery. 
 
+![](https://github.com/schoolpred/financial-market-data-pipeline/blob/main/Project_Flowchart.gif)
+
 ## Project Workflow
 
 1. **Data Retrieval**
