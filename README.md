@@ -29,6 +29,8 @@ Build a streaming data pipeline using Finnhub's real-time financial market data 
 ```sh
 ├── config
 │ ├── config.yaml
+├── data_modeling
+│ ├── bigquery_modeling.sql
 ├── etl
 │ ├── __init__.py
 │ ├── extract.py
